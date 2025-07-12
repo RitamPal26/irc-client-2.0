@@ -16,6 +16,7 @@ const User = require("./models/User");
 const authRoutes = require("./routes/auth");
 const channelRoutes = require("./routes/channels");
 const messageRoutes = require("./routes/messages");
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const server = http.createServer(app);
@@ -31,10 +32,13 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+app.use('/uploads', express.static('uploads'));
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/channels", channelRoutes);
 app.use("/api/messages", messageRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Socket.io connection handling
 handleConnection(io);

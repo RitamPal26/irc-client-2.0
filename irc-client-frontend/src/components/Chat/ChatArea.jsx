@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import useStore from '../../store/useStore';
+import TypingIndicator from './TypingIndicator';
 
 const ChatArea = ({ channel }) => {
   const { messages } = useStore();
@@ -31,6 +32,7 @@ const ChatArea = ({ channel }) => {
 
       {/* Message Input */}
       <div className="p-4 border-t border-gray-700">
+        <TypingIndicator />
         <MessageInput />
       </div>
     </div>
