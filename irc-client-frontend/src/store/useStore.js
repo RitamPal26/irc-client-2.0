@@ -2,49 +2,67 @@ import { create } from "zustand";
 import { io } from "socket.io-client";
 
 const useStore = create((set, get) => ({
-  // Auth state
+  channelMemberCounts: {},
+  /* ────────────── UI ────────────── */
+  soundEnabled: true,
+  toggleSound: () =>
+    set((state) => ({
+      soundEnabled: !state.soundEnabled,
+    })),
+
+  /* ─────────── Auth state ────────── */
   user: null,
   token: localStorage.getItem("token"),
   isAuthenticated: false,
-
-  // Chat state
-  channels: [],
-  currentChannel: null,
-  messages: [],
-  onlineUsers: [],
-  typingUsers: [],
-
-  // Socket
-  socket: null,
-
-  // Actions
   setUser: (user) => set({ user, isAuthenticated: true }),
+
   setToken: (token) => {
     localStorage.setItem("token", token);
     set({ token });
   },
+
+  setChannelMemberCount: (channelName, count) =>
+    set((state) => ({
+      channelMemberCounts: {
+        ...state.channelMemberCounts,
+        [channelName]: count,
+      },
+    })),
+
   logout: () => {
     localStorage.removeItem("token");
     const { socket } = get();
     if (socket) socket.disconnect();
+
     set({
       user: null,
       token: null,
       isAuthenticated: false,
       socket: null,
       channels: [],
+      currentChannel: null,
       messages: [],
+      onlineUsers: [],
+      typingUsers: [],
     });
   },
 
-  // Socket actions
-  connectSocket: (token) => {
-    const { socket } = get();
+  /* ─────────── Chat state ────────── */
+  channels: [],
+  currentChannel: null,
+  messages: [],
+  onlineUsers: [],
+  typingUsers: [],
 
-    // Disconnect existing socket before creating new one
-    if (socket) {
+  /* ───────────── Socket ──────────── */
+  socket: null,
+
+  connectSocket: (token) => {
+    const { socket: existingSocket } = get();
+
+    if (existingSocket) {
       console.log("🔌 Disconnecting existing socket");
-      socket.disconnect();
+      existingSocket.disconnect();
     }
 
     try {
@@ -54,46 +72,54 @@ const useStore = create((set, get) => ({
         timeout: 5000,
       });
 
-      // Add null checks for all event listeners
-      newSocket?.on("connect", () => {
+      newSocket.on?.("connect", () => {
         console.log("✅ Connected to server");
       });
 
-      newSocket?.on("connect_error", (error) => {
+      newSocket.on?.("connect_error", (error) => {
         console.error("❌ Socket connection error:", error);
       });
 
-      newSocket?.on("disconnect", (reason) => {
+      newSocket.on?.("disconnect", (reason) => {
         console.log("🔌 Socket disconnected:", reason);
       });
 
-      newSocket?.on("new-message", (message) => {
+      newSocket.on?.("new-message", (message) => {
         console.log("📨 New message received:", message);
+
         set((state) => {
-          const messageExists = state.messages.some(
-            (m) => m._id === message._id
-          );
-          if (messageExists) return state;
+          const duplicate = state.messages.some((m) => m._id === message._id);
+          if (duplicate) return state;
           return { messages: [...state.messages, message] };
         });
       });
 
-      // Only set socket if creation was successful
-      if (newSocket) {
-        set({ socket: newSocket });
-      }
+      // ADD THIS NEW LISTENER
+      newSocket.on?.("reaction-updated", (data) => {
+        console.log("🎭 Reaction updated:", data);
+
+        set((state) => ({
+          messages: state.messages.map((message) =>
+            message._id === data.messageId
+              ? { ...message, reactions: data.reactions }
+              : message
+          ),
+        }));
+      });
+
+      set({ socket: newSocket });
     } catch (error) {
       console.error("❌ Failed to create socket:", error);
       set({ socket: null });
     }
   },
 
-  // Channel actions
+  /* ───────── Channel actions ─────── */
   setChannels: (channels) => set({ channels }),
   setCurrentChannel: (channel) => set({ currentChannel: channel }),
   setMessages: (messages) => set({ messages }),
 
-  // Message actions
+  /* ───────── Message actions ─────── */
   sendMessage: (content) => {
     const { socket, currentChannel } = get();
     if (socket && currentChannel) {

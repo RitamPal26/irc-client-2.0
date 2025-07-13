@@ -1,37 +1,53 @@
-import { useEffect, useRef } from 'react';
-import MessageList from './MessageList';
-import MessageInput from './MessageInput';
-import useStore from '../../store/useStore';
-import TypingIndicator from './TypingIndicator';
+import { useEffect, useRef } from "react";
+import MessageList from "./MessageList";
+import MessageInput from "./MessageInput";
+import useStore from "../../store/useStore";
+import TypingIndicator from "./TypingIndicator";
+import useSound from "../../hooks/useSound";
 
 const ChatArea = ({ channel }) => {
-  const { messages } = useStore();
-  const messagesEndRef = useRef(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const { messages, soundEnabled, user, socket, setChannelMemberCount } =
+    useStore();
+  const { playNotificationSound } = useSound();
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (socket) {
+      socket.on("channel-member-count", ({ channelName, memberCount }) => {
+        setChannelMemberCount(channelName, memberCount);
+      });
+
+      return () => {
+        socket.off("channel-member-count");
+      };
+    }
+  }, [socket, setChannelMemberCount]);
+
+  // Play sound when new message arrives
+  useEffect(() => {
+    if (soundEnabled && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      // Only play sound for messages from other users
+      if (lastMessage.userId?.username !== user?.username) {
+        playNotificationSound();
+      }
+    }
+  }, [messages.length, soundEnabled, playNotificationSound, user]);
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col min-w-0 h-full">
       {/* Channel Header */}
-      <div className="p-4 border-b border-gray-700 bg-gray-800">
-        <h2 className="text-lg font-semibold">#{channel.name}</h2>
-        <p className="text-sm text-gray-400">{channel.description}</p>
+      <div className="flex-shrink-0 p-4 border-b border-gray-700 bg-gray-800">
+        <h2 className="text-lg font-semibold truncate">#{channel?.name}</h2>
+        <p className="text-sm text-gray-400 truncate">{channel?.description}</p>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* Messages Area - Let MessageList handle its own scrolling */}
+      <div className="flex-1 min-h-0">
         <MessageList messages={messages} />
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t border-gray-700">
+      <div className="flex-shrink-0 p-4 border-t border-gray-700">
         <TypingIndicator />
         <MessageInput />
       </div>

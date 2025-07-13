@@ -19,6 +19,7 @@ const messageRoutes = require("./routes/messages");
 const uploadRoutes = require('./routes/upload');
 
 const app = express();
+const aiRoutes = require('./routes/ai')
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
@@ -39,6 +40,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/channels", channelRoutes);
 app.use("/api/messages", messageRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/ai', aiRoutes); // Use the AI routes
 
 // Socket.io connection handling
 handleConnection(io);

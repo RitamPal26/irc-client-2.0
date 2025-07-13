@@ -126,7 +126,7 @@ const ChatLayout = () => {
         />
       </div>
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {currentChannel ? (
           <ChatArea channel={currentChannel} />
         ) : (

@@ -19,31 +19,24 @@ const MessageReactions = ({ message }) => {
     setShowPicker(false);
   };
 
-  // Group reactions by emoji
-  const groupedReactions = (message.reactions || []).reduce((acc, reaction) => {
-    if (!acc[reaction.emoji]) {
-      acc[reaction.emoji] = {
-        emoji: reaction.emoji,
-        count: 0,
-        users: [],
-      };
-    }
-    acc[reaction.emoji].count += reaction.users.length;
-    acc[reaction.emoji].users.push(...reaction.users);
-    return acc;
-  }, {});
+  // Fixed: Properly process reactions from your backend format
+  const reactions = message.reactions || [];
 
   return (
     <div className="flex items-center gap-2 mt-1">
       {/* Existing reactions */}
-      {Object.values(groupedReactions).map((reaction) => (
+      {reactions.map((reaction, index) => (
         <button
-          key={reaction.emoji}
+          key={`${reaction.emoji}-${index}`}
           onClick={() => addReaction(reaction.emoji)}
-          className="flex items-center gap-1 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded-full text-xs"
+          className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-colors ${
+            reaction.users.includes(user._id)
+              ? "bg-blue-600 text-white"
+              : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+          }`}
         >
           <span>{reaction.emoji}</span>
-          <span>{reaction.count}</span>
+          <span>{reaction.users.length}</span>
         </button>
       ))}
 

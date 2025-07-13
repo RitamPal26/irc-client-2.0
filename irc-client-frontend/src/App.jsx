@@ -30,28 +30,6 @@ function App() {
     checkAuth();
   }, [token, isAuthenticated, setUser]);
 
-  // ULTIMATE drag and drop prevention
-  useEffect(() => {
-    const preventDefaults = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    // Prevent all drag events on document
-    document.addEventListener('dragenter', preventDefaults, false);
-    document.addEventListener('dragover', preventDefaults, false);
-    document.addEventListener('dragleave', preventDefaults, false);
-    document.addEventListener('drop', preventDefaults, false);
-
-    // Cleanup
-    return () => {
-      document.removeEventListener('dragenter', preventDefaults, false);
-      document.removeEventListener('dragover', preventDefaults, false);
-      document.removeEventListener('dragleave', preventDefaults, false);
-      document.removeEventListener('drop', preventDefaults, false);
-    };
-  }, []);
-
   return (
     <Router>
       <div className="App">

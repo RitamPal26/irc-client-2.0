@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Send } from "lucide-react";
 import useStore from "../../store/useStore";
-import { parseCommand } from "../../utils/commandParser";
+import { processCommand } from "../../utils/commandParser";
 import toast from "react-hot-toast";
 
 const MessageInput = () => {
@@ -14,6 +14,8 @@ const MessageInput = () => {
     user,
     channels,
     setCurrentChannel,
+    setMessages,
+    messages,
   } = useStore();
   const typingTimeoutRef = useRef(null);
 
@@ -52,17 +54,18 @@ const MessageInput = () => {
     }, 2000);
   };
 
-  const handleCommand = (command) => {
+  const handleNonAICommand = (command) => {
     switch (command.type) {
       case "JOIN_CHANNEL":
         const targetChannel = channels.find(
-          (c) => c.name.toLowerCase() === command.channelName.toLowerCase()
+          (c) =>
+            c.name.toLowerCase() === command.payload.channelName.toLowerCase()
         );
         if (targetChannel) {
           setCurrentChannel(targetChannel);
           toast.success(`Joined #${targetChannel.name}`);
         } else {
-          toast.error(`Channel #${command.channelName} not found`);
+          toast.error(`Channel #${command.payload.channelName} not found`);
         }
         break;
 
@@ -77,6 +80,7 @@ const MessageInput = () => {
 /nick newname - Change nickname
 /msg user message - Send private message
 /list - List all channels
+/ai question - Ask AI a question
 /help - Show this help`);
         break;
 
@@ -93,7 +97,7 @@ const MessageInput = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!message.trim() || !currentChannel) return;
 
@@ -108,12 +112,23 @@ const MessageInput = () => {
 
     // Check if it's a command
     if (message.startsWith("/")) {
-      const command = parseCommand(message, user, currentChannel);
+      // Use the new processCommand for AI commands
+      const result = await processCommand(message, user);
 
-      if (command) {
-        handleCommand(command);
-      } else {
-        toast.error("Unknown command. Type /help for available commands.");
+      if (result) {
+        // Handle AI response specifically
+        if (result.type === "ai_response") {
+          const aiMessage = {
+            _id: `ai-${Date.now()}`,
+            content: result.content,
+            userId: { username: "AI-Bot", _id: "ai-bot" },
+            createdAt: new Date().toISOString(),
+          };
+          setMessages([...messages, aiMessage]);
+        } else {
+          // Handle other commands with the old logic
+          handleNonAICommand(result);
+        }
       }
     } else {
       sendMessage(message.trim());

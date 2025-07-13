@@ -20,6 +20,16 @@ const socketAuth = async (socket, next) => {
   }
 };
 
+const updateChannelMemberCount = (io, channelName) => {
+  const room = io.sockets.adapter.rooms.get(channelName);
+  const memberCount = room ? room.size : 0;
+
+  io.to(channelName).emit("channel-member-count", {
+    channelName,
+    memberCount,
+  });
+};
+
 const handleConnection = (io) => {
   io.use(socketAuth);
 
@@ -51,6 +61,7 @@ const handleConnection = (io) => {
             user: socket.user.username,
             message: `${socket.user.username} joined the channel`,
           });
+          updateChannelMemberCount(io, channelId);
         }
       } catch (error) {
         socket.emit("error", { message: "Failed to join channel" });
@@ -64,9 +75,9 @@ const handleConnection = (io) => {
         user: socket.user.username,
         message: `${socket.user.username} left the channel`,
       });
+      updateChannelMemberCount(io, channelId);
     });
 
-    // Handle sending messages
     // Handle sending messages
     socket.on("send-message", async (data) => {
       try {
@@ -192,29 +203,6 @@ const handleConnection = (io) => {
       }
     });
 
-    socket.on("reaction-updated", (data) => {
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === data.messageId ? { ...m, reactions: data.reactions } : m
-        ),
-      }));
-    });
-
-    // Handle typing indicators
-    socket.on("typing-start", (data) => {
-      socket.to(data.channelId).emit("user-typing", {
-        user: data.username,
-        channelId: data.channelId,
-      });
-    });
-
-    socket.on("typing-stop", (data) => {
-      socket.to(data.channelId).emit("user-stop-typing", {
-        user: data.username,
-        channelId: data.channelId,
-      });
-    });
-
     // Handle disconnect
     socket.on("disconnect", async () => {
       console.log(`User ${socket.user.username} disconnected`);
@@ -223,6 +211,13 @@ const handleConnection = (io) => {
       await User.findByIdAndUpdate(socket.user._id, {
         isOnline: false,
         lastSeen: new Date(),
+      });
+
+      // Update member count for all rooms user was in
+      socket.rooms.forEach((room) => {
+        if (room !== socket.id) {
+          updateChannelMemberCount(io, room);
+        }
       });
 
       // Notify channels about user going offline
